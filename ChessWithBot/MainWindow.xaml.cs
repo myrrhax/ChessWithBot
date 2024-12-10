@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace ChessWithBot
 {
@@ -77,6 +78,11 @@ namespace ChessWithBot
         private void MouseClick(object? sender, MouseEventArgs e)
         {
             if (!Game.IsPlayerMove) return;
+            if (!Game.GetAllPossibleMoves(Brushes.White).Any())
+            {
+                Game.NoPossibleMoves(Brushes.White);
+            }
+
             if (selectedCell == null)
             {
                 selectedCell = (Border)sender;
@@ -127,6 +133,8 @@ namespace ChessWithBot
                 selectedCell = null;
                 cachedMoves = new HashSet<Move>();
                 Game.IsPlayerMove = false;
+                ReDrawBoard();
+                Application.Current.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
                 Game.MakeBotMove();
             }
             

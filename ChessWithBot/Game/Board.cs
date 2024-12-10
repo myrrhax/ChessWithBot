@@ -25,14 +25,16 @@ public class Board
 
     public void UpdatePiecesPossibleMoves()
     {
-        foreach (var p in PlayerPeaces)
+        for (int i = 0; i < PlayerPeaces.Count; i++)
         {
+            var p = PlayerPeaces[i];
             var moves = p.GeneratePossibleMoves();
             p.ValidateMoves(moves);
             p.PossibleMoves = moves;
         }
-        foreach (var p in BotPeaces)
+        for (int i = 0; i < BotPeaces.Count; i++)
         {
+            var p = BotPeaces[i];
             var moves = p.GeneratePossibleMoves();
             p.ValidateMoves(moves);
             p.PossibleMoves = moves;
@@ -120,4 +122,5 @@ public class Board
         PlayerKing.PossibleMoves = PlayerKing.GeneratePossibleMoves();
         BotKing.PossibleMoves = BotKing.GeneratePossibleMoves();
     }
+
 }

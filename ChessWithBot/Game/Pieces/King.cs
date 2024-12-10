@@ -35,25 +35,27 @@ public class King : Piece, IMoveDependent
         }
     }
 
-    public override bool Move((int X, int Y) position, HashSet<Move> possibleMoves)
+    public override int Weight => 900;
+
+    public override bool Move(Move move, HashSet<Move> possibleMoves)
     {
-        if (possibleMoves.Any(move => move.Coordinates == position && (move.IsShortCastling || move.IsLongCastling)))
+        if (possibleMoves.Any(m => m.Coordinates == move.Coordinates && (m.IsShortCastling || m.IsLongCastling)))
         {
             var castlingMove = possibleMoves.Where(move => move.IsShortCastling || move.IsLongCastling
-                && move.Coordinates == position);
+                && move.Coordinates == move.Coordinates);
             if (castlingMove.Any())
             {
-                Move move = castlingMove.First();
+                Move castling = castlingMove.First();
                 // Длинная рокировка
-                if (move.IsLongCastling)
+                if (castling.IsLongCastling)
                 {
                     int line = Color == Brushes.White ? Board.BOARD_HEIGHT - 1 : 0;
                     var oldPosition = Position;
-                    Position = position;
+                    Position = move.Coordinates;
                     Piece leftRook = Board.Squares[line, 0].Piece!;
                     Move rookMove = new Move(leftRook, (line, 3));
                     leftRook.PossibleMoves.Add(rookMove);
-                    leftRook.Move(rookMove.Coordinates, leftRook.PossibleMoves);
+                    leftRook.Move(rookMove, leftRook.PossibleMoves);
                     Board.Squares[oldPosition.X, oldPosition.Y].Piece = null;
                     Board.Squares[Position.X, Position.Y].Piece = this;
                 }
@@ -62,11 +64,11 @@ public class King : Piece, IMoveDependent
                 {
                     int line = Color == Brushes.White ? Board.BOARD_HEIGHT - 1 : 0;
                     var oldPosition = Position;
-                    Position = position;
+                    Position = move.Coordinates;
                     Piece rightRook = Board.Squares[line, 7].Piece!;
                     Move rookMove = new Move(rightRook, (line, 5));
                     rightRook.PossibleMoves.Add(rookMove);
-                    rightRook.Move(rookMove.Coordinates, rightRook.PossibleMoves);
+                    rightRook.Move(rookMove, rightRook.PossibleMoves);
                     Board.Squares[oldPosition.X, oldPosition.Y].Piece = null;
                     Board.Squares[Position.X, Position.Y].Piece = this;
                 }
@@ -74,7 +76,7 @@ public class King : Piece, IMoveDependent
                 return true;
             }
         }
-        return base.Move(position, possibleMoves);
+        return base.Move(move, possibleMoves);
     }
 
     public override void ValidateMoves(HashSet<Move> moves)
@@ -85,7 +87,7 @@ public class King : Piece, IMoveDependent
         foreach (var move in moves)
         {
             Piece? newSquarePiece = Board.Squares[move.Coordinates.X, move.Coordinates.Y].Piece;
-            Move(move.Coordinates, moves);
+            Move(move, moves);
             foreach (var p in enemies)
             {
                 var enemyMoves = p.GeneratePossibleMoves();
@@ -95,19 +97,19 @@ public class King : Piece, IMoveDependent
                     break;
                 }
             }
-            UndoMove(currentSquare.Coordinates, move.Coordinates, newSquarePiece);
+            UndoMove(currentSquare.Coordinates, move, newSquarePiece);
             if (move.IsShortCastling)
             {
                 int line = isPlayer ? Board.BOARD_WIDTH - 1 : 0;
                 var rook = Board.Squares[line, Board.BOARD_WIDTH - 3].Piece!;
 
-                rook.UndoMove((line, Board.BOARD_WIDTH - 1), (line, Board.BOARD_WIDTH - 3), null);
-            } 
+                rook.UndoMove((line, Board.BOARD_WIDTH - 1), new Move(rook, (line, Board.BOARD_WIDTH - 3)), null);
+            }
             else if (move.IsLongCastling)
             {
                 int line = isPlayer ? Board.BOARD_WIDTH - 1 : 0;
                 var rook = Board.Squares[line, 3].Piece!;
-                rook.UndoMove((line, 0), (line, 3), null);
+                rook.UndoMove((line, 0), new Move(rook, (line, 3)), null);
             }
         }
     }

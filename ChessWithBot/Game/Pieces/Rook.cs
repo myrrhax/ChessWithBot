@@ -16,6 +16,8 @@ namespace ChessWithBot.Game.Pieces
 
         public int MovesCount { get; set; }
 
+        public override int Weight => 50;
+
         protected override double[,] PiecePositionMatrix => new double[,]
         {
             {  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0 },
@@ -35,9 +37,24 @@ namespace ChessWithBot.Game.Pieces
             return moves;
         }
 
-        public override bool Move((int X, int Y) position, HashSet<Move> possibleMoves)
+        public override bool Move(Move move, HashSet<Move> possibleMoves)
         {
-            return base.Move(position, possibleMoves);
+            return base.Move(move, possibleMoves);
+        }
+
+        public void CancelCastling(bool isShorCastling)
+        {
+            int line = Color == Brushes.White ? Board.BOARD_WIDTH - 1 : 0;
+            if (isShorCastling)
+            {
+                Move move = new Move(this, (line, Board.BOARD_WIDTH - 3));
+                UndoMove((line, Board.BOARD_WIDTH - 1), move, null);
+            }
+            else
+            {
+                Move move = new Move(this, (line, 3));
+                UndoMove((line, 0), move, null);
+            }
         }
     }
 }

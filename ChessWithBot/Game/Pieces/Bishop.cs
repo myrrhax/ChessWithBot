@@ -13,6 +13,8 @@ public class Bishop : Piece
     {
     }
 
+    public override int Weight => 30;
+
     protected override double[,] PiecePositionMatrix => new double[,] 
     {
         { -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0 },

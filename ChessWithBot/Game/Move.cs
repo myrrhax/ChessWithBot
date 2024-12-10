@@ -12,6 +12,7 @@ namespace ChessWithBot.Game
         public bool IsQueening { get; set; } = false;
         public Piece? TakedPiece { get; set; } = default;
         public bool IsAttacking => TakedPiece != null;
+        public bool IsCheck { get; set; } = false;
 
         public Move(Piece piece, (int, int) coordinates)
         {

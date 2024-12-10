@@ -12,6 +12,7 @@ public abstract class Piece
     public Board Board { get; init; }
     public HashSet<Move> PossibleMoves { get; set; } = new HashSet<Move>();
     protected abstract double[,] PiecePositionMatrix { get; }
+    public abstract int Weight { get; }
     public double[,] PositionMatrix
     {
         get
@@ -27,13 +28,12 @@ public abstract class Piece
         Board = board;
     }
 
-    public virtual bool Move((int X, int Y) position, HashSet<Move> possibleMoves)
+    public virtual bool Move(Move move, HashSet<Move> possibleMoves)
     {
-        Move m = new Move(this, position);
-        if (!possibleMoves.Contains(m)) return false;
+        if (!possibleMoves.Contains(move)) return false;
         var oldPosition = Position;
-        Position = position;
-        if (Board.Squares[position.X, position.Y].Piece != null) Take(position);
+        Position = move.Coordinates;
+        if (Board.Squares[move.Coordinates.X, move.Coordinates.Y].Piece != null) Take(move.Coordinates);
         Board.Squares[oldPosition.X, oldPosition.Y].Piece = null;
         Board.Squares[Position.X, Position.Y].Piece = this;
         if (this is IMoveDependent moveDependent)
@@ -43,7 +43,7 @@ public abstract class Piece
         return true;
     }
 
-    private void Take((int X, int Y) position)
+    protected void Take((int X, int Y) position)
     {
         Piece enemy = Board.Squares[position.X, position.Y].Piece!;
         bool isPlayer = Color == Brushes.White;
@@ -55,7 +55,7 @@ public abstract class Piece
         Board.Squares[position.X, position.Y].Piece = null;
     }
 
-    public void UndoMove((int X, int Y) oldPosition, (int X, int Y) newPositon, Piece? oldPiece)
+    public virtual void UndoMove((int X, int Y) oldPosition, Move newPositon, Piece? oldPiece)
     {
         Board.Squares[oldPosition.X, oldPosition.Y].Piece = this;
         Position = oldPosition;
@@ -64,9 +64,9 @@ public abstract class Piece
             bool isPlayer = Color == Brushes.White;
             if (isPlayer) Board.BotPeaces.Add(oldPiece);
             else Board.PlayerPeaces.Add(oldPiece);
-            oldPiece.Position = newPositon;
+            oldPiece.Position = newPositon.Coordinates;
         }
-        Board.Squares[newPositon.X, newPositon.Y].Piece = oldPiece;
+        Board.Squares[newPositon.Coordinates.X, newPositon.Coordinates.Y].Piece = oldPiece;
         if (this is IMoveDependent moveDependent)
         {
             moveDependent.MovesCount--;
@@ -77,12 +77,13 @@ public abstract class Piece
     {
         bool isPlayer = Color == Brushes.White;
         King king = isPlayer ? Board.PlayerKing : Board.BotKing;
+        King enemyKing = isPlayer ? Board.BotKing : Board.PlayerKing;
         List<Piece> enemies = isPlayer ? Board.BotPeaces : Board.PlayerPeaces;
         Square currentSquare = Board.Squares[Position.X, Position.Y];
         foreach (var move in moves)
         {
             Piece? newSquarePiece = Board.Squares[move.Coordinates.X, move.Coordinates.Y].Piece;
-            Move(move.Coordinates, moves);
+            Move(move, moves);
             foreach (var p in enemies)
             {
                 var enemyMoves = p.GeneratePossibleMoves();
@@ -92,7 +93,7 @@ public abstract class Piece
                     break;
                 }
             }
-            UndoMove(currentSquare.Coordinates, move.Coordinates, newSquarePiece);
+            UndoMove(currentSquare.Coordinates, move, newSquarePiece);
         }
     }
 

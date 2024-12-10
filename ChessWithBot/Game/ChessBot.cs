@@ -11,10 +11,18 @@ namespace ChessWithBot.Game
 {
     public class ChessBot
     {
+        int movesCount = 0;
         public Game Game { get; set; }
+        Random random = new Random();
+
         public ChessBot(Game game)
         {
             Game = game;
+        }
+
+        private int GetRandomOffset()
+        {
+            return random.Next(1, 10); // Случайное число от -0.05 до 0.05
         }
 
         public void MakeMove()
@@ -33,44 +41,55 @@ namespace ChessWithBot.Game
                     Game.TakePieceByBot(bestMove!.Value.Coordinates);
                 }   
                 Game.TryMakeMove(bestMove!.Value);
+                MessageBox.Show("Calculated: " + movesCount);
                 Game.UpdateBoard();
+                movesCount = 0;
                 Game.IsPlayerMove = true;
             }
         }
 
-        private List<Move> GetAllPossibleMoves(Brush color)
+        private List<Move> GetOrderedMoves(bool isMaximising)
         {
-            var pieces = color == Brushes.White ? Game.Board.PlayerPeaces : Game.Board.BotPeaces;
-            var moveSets = pieces.Select(x => x.PossibleMoves).Select(move => move).ToList();
+            var moves = Game.GetAllPossibleMoves(isMaximising ? Brushes.White : Brushes.Brown);
+            return moves.OrderByDescending(move =>
+                move.IsQueening ? 90 : 0)
+                .ThenByDescending(move =>
+                move.IsAttacking ? 10 + move.TakedPiece!.Weight : 0)// Взятие приоритетно
+                .ToList();
+        }
 
-            List<Move> moves = new List<Move>();
-
-            foreach (var m in moveSets)
+        private Move? IterativeDeepening(int maxDepth)
+        {
+            Move? bestMove = null;
+            for (int depth = 1; depth <= maxDepth; depth++)
             {
-                foreach (var movesInSet in m)
-                {
-                    moves.Add(movesInSet);
-                }
+                bestMove = MiniMaxRoot(depth);
             }
-
-            return moves;
+            return bestMove;
         }
 
         private Move? MiniMaxRoot(int depth)
         {
-            var moves = GetAllPossibleMoves(Brushes.Brown);
+            var moves = GetOrderedMoves(false);
             double bestMove = int.MinValue;
             Move? best = default;
 
             foreach (var move in moves)
             {
+                movesCount++;
                 var oldPosition = move.Piece.Position;
                 Game.TryMakeMove(move);
                 double value = MiniMax(depth - 1, double.MinValue, double.MaxValue, false);
                 Game.UndoMove(oldPosition, move);
                 if (move.IsShortCastling || move.IsLongCastling)
                 {
-                    Game.CancelCastling(move);
+                    if (move.IsShortCastling || move.IsLongCastling)
+                    {
+                        int line = move.Piece.Color == Brushes.White ? Board.BOARD_HEIGHT - 1 : 0;
+                        int y = move.IsShortCastling ? Board.BOARD_WIDTH - 3 : 3;
+                        var rook = Game.Board.Squares[line, y].Piece! as Rook;
+                        rook!.CancelCastling(move.IsShortCastling);
+                    }
                 }
                 if (value >= bestMove)
                 {
@@ -86,14 +105,15 @@ namespace ChessWithBot.Game
         {
             if (depth == 0)
             {
-                return -Game.Board.EvaluateMaterial();
+                return -Game.Board.EvaluateMaterial() + GetRandomOffset();
             }
             if (isMaximising)
             {
-                var moves = GetAllPossibleMoves(Brushes.White);
+                var moves = GetOrderedMoves(false);
                 double bestMove = int.MinValue;
                 foreach (var move in moves)
                 {
+                    movesCount++;
                     var piece = move.Piece;
                     var oldPosition = piece.Position;
                     Game.TryMakeMove(move);
@@ -101,7 +121,10 @@ namespace ChessWithBot.Game
                     Game.UndoMove(oldPosition, move);
                     if (move.IsShortCastling || move.IsLongCastling)
                     {
-                        Game.CancelCastling(move);
+                        int line = move.Piece.Color == Brushes.White ? Board.BOARD_HEIGHT - 1 : 0;
+                        int y = move.IsShortCastling ? Board.BOARD_WIDTH - 3 : 3;
+                        var rook = Game.Board.Squares[line, y].Piece! as Rook;
+                        rook!.CancelCastling(move.IsShortCastling);
                     }
                     alpha = Math.Max(alpha, bestMove);
                     if (beta <= alpha)
@@ -114,8 +137,9 @@ namespace ChessWithBot.Game
             else
             {
                 double bestMove = int.MaxValue;
-                foreach (var move in GetAllPossibleMoves(Brushes.Brown))
+                foreach (var move in GetOrderedMoves(true))
                 {
+                    movesCount++;
                     var piece = move.Piece;
                     var oldPosition = piece.Position;
                     Game.TryMakeMove(move);
@@ -123,7 +147,10 @@ namespace ChessWithBot.Game
                     Game.UndoMove(oldPosition, move);
                     if (move.IsShortCastling || move.IsLongCastling)
                     {
-                        Game.CancelCastling(move);
+                        int line = move.Piece.Color == Brushes.White ? Board.BOARD_HEIGHT - 1 : 0;
+                        int y = move.IsShortCastling ? Board.BOARD_WIDTH - 3 : 3;
+                        var rook = Game.Board.Squares[line, y].Piece! as Rook;
+                        rook!.CancelCastling(move.IsShortCastling);
                     }
                     beta = Math.Min(beta, bestMove);
                     if (beta <= alpha)

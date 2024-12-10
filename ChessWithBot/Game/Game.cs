@@ -19,6 +19,11 @@ public class Game
         OnGameEnd += endGame;
     }
 
+    public Game()
+    {
+
+    }
+
     public void StartGame()
     {
         Board = new Board();
@@ -30,7 +35,7 @@ public class Game
         Piece p = move.Piece;
         if (p.PossibleMoves.Contains(move))
         {
-            p.Move(move.Coordinates, p.PossibleMoves);
+            p.Move(move, p.PossibleMoves);
             Board.UpdatePiecesPossibleMoves();
             return true;
         }
@@ -40,7 +45,7 @@ public class Game
     public void UndoMove((int, int) oldPosition, Move move)
     {
         var piece = move.Piece;
-        piece.UndoMove(oldPosition, move.Coordinates, move.TakedPiece);
+        piece.UndoMove(oldPosition, move, move.TakedPiece);
         Board.UpdatePiecesPossibleMoves();
     }
 
@@ -57,6 +62,24 @@ public class Game
     public void TakePieceByBot((int, int) position)
     {
         OnPieceTake?.Invoke(position);
+    }
+
+    public List<Move> GetAllPossibleMoves(Brush color)
+    {
+        var pieces = color == Brushes.White ? Board.PlayerPeaces : Board.BotPeaces;
+        var moveSets = pieces.Select(x => x.PossibleMoves).Select(move => move).ToList();
+
+        List<Move> moves = new List<Move>();
+
+        foreach (var m in moveSets)
+        {
+            foreach (var movesInSet in m)
+            {
+                moves.Add(movesInSet);
+            }
+        }
+
+        return moves;
     }
 
     internal void NoPossibleMoves(SolidColorBrush color)
@@ -77,19 +100,4 @@ public class Game
         OnGameEnd?.Invoke();
     }
 
-    public void CancelCastling(Move move)
-    {
-        int line = move.Piece.Color == Brushes.White ? Board.BOARD_WIDTH - 1 : 0;
-        if (move.IsShortCastling)
-        {
-            var rook = Board.Squares[line, Board.BOARD_WIDTH - 3].Piece!;
-
-            rook.UndoMove((line, Board.BOARD_WIDTH - 1), (line, Board.BOARD_WIDTH - 3), null);
-        }
-        else if (move.IsLongCastling)
-        {
-            var rook = Board.Squares[line, 3].Piece!;
-            rook.UndoMove((line, 0), (line, 3), null);
-        }
-    }
 }
